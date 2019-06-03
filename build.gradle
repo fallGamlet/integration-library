@@ -6,7 +6,7 @@ apply plugin: 'maven-publish'
 apply plugin: 'org.jetbrains.dokka-android'
 
 android {
-    def version = 5
+    def version = 7
 
     compileSdkVersion 28
     buildToolsVersion '28.0.3'
@@ -35,10 +35,13 @@ dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     implementation 'com.github.evotor:push-notifications:v0.2.1'
     implementation 'com.github.evotor:query-api:1.0.0'
+    compile 'com.google.code.gson:gson:2.8.5'
+    testCompile 'junit:junit:4.12'
 }
 
 repositories {
     mavenCentral()
+    google()
 }
 
 buildscript {
@@ -56,6 +59,7 @@ buildscript {
         classpath "org.jetbrains.dokka:dokka-android-gradle-plugin:0.9.17"
     }
 }
+// in the individual module build.gradle files
 
 allprojects {
     repositories {
@@ -66,8 +70,45 @@ allprojects {
 }
 
 dokka {
+    moduleName = 'integration-library'
     outputFormat = 'javadoc'
     outputDirectory = "$buildDir/javadoc"
+
+    includes = ['packages.md']
+
+//    reportUndocumented = true
+
+//    packageOptions {
+//        prefix = "android.support" // will match kotlin.internal and all sub-packages of it
+//        suppress = true
+//    }
+
+//    packageOptions {
+//        prefix = "ru.evotor.pushNotifications" // will match kotlin.internal and all sub-packages of it
+//        suppress = true
+//    }
+
+}
+
+task dokkaJavadoc(type: org.jetbrains.dokka.gradle.DokkaTask) {
+    outputFormat = "javadoc"
+    outputDirectory = "$buildDir/dokkaJavadoc"
+
+    includes = ['packages.md']
+}
+
+task dokkaHTMLAsJava(type: org.jetbrains.dokka.gradle.DokkaTask) {
+    outputFormat = "html-as-java"
+    outputDirectory = "$buildDir/dokkaHtmlasjava"
+
+    includes = ['packages.md']
+}
+
+task dokkaHTML(type: org.jetbrains.dokka.gradle.DokkaTask) {
+    outputFormat = "html"
+    outputDirectory = "$buildDir/dokkaHtml"
+
+    includes = ['packages.md']
 }
 
 task sourceJar(type: Jar) {
@@ -87,7 +128,7 @@ publishing {
         mavenKotlin(MavenPublication) {
             groupId 'com.github.evotor'
             artifactId "integration-library"
-            version "v1.0.0-LOCAL"
+            version "STDEV-1735"
             artifact(sourceJar)
             artifact(javadocJar)
             artifact "${project.buildDir}/outputs/aar/${project.archivesBaseName}-release.aar"

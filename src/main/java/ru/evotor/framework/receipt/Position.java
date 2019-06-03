@@ -20,13 +20,17 @@ import ru.evotor.framework.calculator.PercentCalculator;
 import ru.evotor.framework.inventory.AttributeValue;
 import ru.evotor.framework.inventory.ProductItem;
 import ru.evotor.framework.inventory.ProductType;
-import ru.evotor.framework.payment.PaymentFeature;
+import ru.evotor.framework.receipt.position.SettlementMethod;
+import ru.evotor.framework.receipt.position.AgentRequisites;
 
+/**
+ * Позиция чека.
+ */
 public class Position implements Parcelable {
     /**
      * Текущая версия объекта Position
      */
-    private static final int VERSION = 2;
+    private static final int VERSION = 3;
     /**
      * Magic number для идентификации использования версионирования объекта
      */
@@ -84,7 +88,7 @@ public class Position implements Parcelable {
     @Nullable
     private String barcode;
     /**
-     * Алкогольная марка.
+     * Алкогольная или табачная марка. Марка записывается в реквизит "код товара" (тег 1162).
      */
     private String mark;
     /**
@@ -124,7 +128,13 @@ public class Position implements Parcelable {
      * По умолчанию это 'Полный расчет'
      */
     @NonNull
-    private PaymentFeature paymentFeature = new PaymentFeature.CheckoutFull();
+    private SettlementMethod settlementMethod = new SettlementMethod.FullSettlement();
+
+    /**
+     * Реквизиты агента
+     */
+    @Nullable
+    private AgentRequisites agentRequisites;
 
     /**
      * Deprecated since 16.02.2018. Use position Builder.
@@ -209,7 +219,7 @@ public class Position implements Parcelable {
         if (extraKeys != null) {
             this.extraKeys.addAll(extraKeys);
         }
-        this.subPositions = subPositions;
+        this.subPositions = subPositions != null ? new ArrayList<>(subPositions) : null;
     }
 
     public Position(Position position) {
@@ -234,7 +244,8 @@ public class Position implements Parcelable {
                 position.getSubPositions()
         );
         this.attributes = position.getAttributes();
-        this.paymentFeature = position.getPaymentFeature();
+        this.settlementMethod = position.getSettlementMethod();
+        this.agentRequisites = position.getAgentRequisites();
     }
 
     /**
@@ -391,7 +402,7 @@ public class Position implements Parcelable {
     }
 
     /**
-     * @return Алкогольная марка.
+     * @return Алкогольная или табачная марка. Марка записывается в реквизит "код товара" (тег 1162).
      */
     @Nullable
     public String getMark() {
@@ -445,15 +456,31 @@ public class Position implements Parcelable {
     }
 
     /**
-     * @return признак способа расчета для позиции
+     * @return признак способа расчета
      */
     @NonNull
-    public PaymentFeature getPaymentFeature() {
-        return paymentFeature;
+    public SettlementMethod getSettlementMethod() {
+        return settlementMethod;
+    }
+
+    /**
+     * @return Агентские реквизиты
+     */
+    @Nullable
+    public AgentRequisites getAgentRequisites() {
+        return agentRequisites;
     }
 
     @Override
     public boolean equals(Object o) {
+        return equals(o, false);
+    }
+
+    public boolean equalsExceptQuantity(Object o) {
+        return equals(o, true);
+    }
+
+    private boolean equals(Object o, boolean exceptQuantity) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
@@ -470,25 +497,31 @@ public class Position implements Parcelable {
         if (measureName != null ? !measureName.equals(position.measureName) : position.measureName != null)
             return false;
         if (taxNumber != position.taxNumber) return false;
-        if (price != null ? !price.equals(position.price) : position.price != null) return false;
-        if (priceWithDiscountPosition != null ? !priceWithDiscountPosition.equals(position.priceWithDiscountPosition) : position.priceWithDiscountPosition != null)
+        if ((price != null ? price : BigDecimal.ZERO).compareTo(position.price != null ? position.price : BigDecimal.ZERO) != 0)
             return false;
-        if (quantity != null ? !quantity.equals(position.quantity) : position.quantity != null)
+        if ((priceWithDiscountPosition != null ? priceWithDiscountPosition : BigDecimal.ZERO)
+                .compareTo(position.priceWithDiscountPosition != null ? position.priceWithDiscountPosition : BigDecimal.ZERO) != 0)
+            return false;
+        if (!exceptQuantity && (quantity != null ? quantity : BigDecimal.ZERO).compareTo(position.quantity != null ? position.quantity : BigDecimal.ZERO) != 0)
             return false;
         if (barcode != null ? !barcode.equals(position.barcode) : position.barcode != null)
             return false;
         if (mark != null ? !mark.equals(position.mark) : position.mark != null) return false;
-        if (alcoholByVolume != null ? !alcoholByVolume.equals(position.alcoholByVolume) : position.alcoholByVolume != null)
+        if ((alcoholByVolume != null ? alcoholByVolume : BigDecimal.ZERO)
+                .compareTo(position.alcoholByVolume != null ? position.alcoholByVolume : BigDecimal.ZERO) != 0)
             return false;
         if (alcoholProductKindCode != null ? !alcoholProductKindCode.equals(position.alcoholProductKindCode) : position.alcoholProductKindCode != null)
             return false;
-        if (tareVolume != null ? !tareVolume.equals(position.tareVolume) : position.tareVolume != null)
+        if ((tareVolume != null ? tareVolume : BigDecimal.ZERO).compareTo(position.tareVolume != null ? position.tareVolume : BigDecimal.ZERO) != 0)
             return false;
         if (extraKeys != null ? !extraKeys.equals(position.extraKeys) : position.extraKeys != null)
             return false;
         if (attributes != null ? !attributes.equals(position.attributes) : position.attributes != null)
             return false;
-        if (paymentFeature != position.paymentFeature) return false;
+        if (!settlementMethod.equals(position.settlementMethod))
+            return false;
+        if (agentRequisites != null ? !agentRequisites.equals(position.agentRequisites) : position.agentRequisites != null)
+            return false;
         return subPositions != null ? subPositions.equals(position.subPositions) : position.subPositions == null;
     }
 
@@ -513,7 +546,8 @@ public class Position implements Parcelable {
         result = 31 * result + (extraKeys != null ? extraKeys.hashCode() : 0);
         result = 31 * result + (subPositions != null ? subPositions.hashCode() : 0);
         result = 31 * result + (attributes != null ? attributes.hashCode() : 0);
-        result = 31 * result + (paymentFeature != null ? paymentFeature.hashCode() : 0);
+        result = 31 * result + (settlementMethod != null ? settlementMethod.hashCode() : 0);
+        result = 31 * result + (agentRequisites != null ? agentRequisites.hashCode() : 0);
         return result;
     }
 
@@ -539,7 +573,8 @@ public class Position implements Parcelable {
                 ", extraKeys=" + extraKeys +
                 ", subPositions=" + subPositions +
                 ", attributes=" + attributes +
-                ", paymentFeature=" + paymentFeature +
+                ", settlementMethod=" + settlementMethod +
+                ", agentRequisites=" + agentRequisites +
                 '}';
     }
 
@@ -601,7 +636,9 @@ public class Position implements Parcelable {
             }
         }
         // Payment features
-        dest.writeParcelable(this.paymentFeature, flags);
+        dest.writeParcelable(this.settlementMethod, flags);
+        //AgentRequisites
+        dest.writeBundle(this.agentRequisites != null ? this.agentRequisites.toBundle() : null);
     }
 
     protected Position(Parcel in) {
@@ -654,7 +691,12 @@ public class Position implements Parcelable {
             }
             case 2: {
                 readAttributesField(in);
-                readPaymentFeatureField(in);
+                readSettlementMethodField(in);
+            }
+            case 3: {
+                readAttributesField(in);
+                readSettlementMethodField(in);
+                readAgentRequisitesField(in);
             }
         }
 
@@ -675,13 +717,17 @@ public class Position implements Parcelable {
         }
     }
 
-    private void readPaymentFeatureField(Parcel in) {
-        PaymentFeature paymentFeature = in.readParcelable(PaymentFeature.class.getClassLoader());
-        if (paymentFeature == null) {
-            this.paymentFeature = new PaymentFeature.CheckoutFull();
+    private void readSettlementMethodField(Parcel in) {
+        SettlementMethod settlementMethod = in.readParcelable(SettlementMethod.class.getClassLoader());
+        if (settlementMethod == null) {
+            this.settlementMethod = new SettlementMethod.FullSettlement();
         } else {
-            this.paymentFeature = paymentFeature;
+            this.settlementMethod = settlementMethod;
         }
+    }
+
+    private void readAgentRequisitesField(Parcel in) {
+        this.agentRequisites = AgentRequisites.Companion.from(in.readBundle(AgentRequisites.class.getClassLoader()));
     }
 
     public static final Creator<Position> CREATOR = new Creator<Position>() {
@@ -799,6 +845,20 @@ public class Position implements Parcelable {
             return this;
         }
 
+        public Builder toTobaccoMarked(
+                @NonNull String mark
+        ) {
+            position.productType = ProductType.TOBACCO_MARKED;
+            setAlcoParams(
+                    null,
+                    null,
+                    null,
+                    null
+            );
+            setTobaccoParams(mark);
+            return this;
+        }
+
         public Builder toNormal() {
             position.productType = ProductType.NORMAL;
             setAlcoParams(
@@ -831,6 +891,10 @@ public class Position implements Parcelable {
             position.alcoholByVolume = alcoholByVolume;
             position.alcoholProductKindCode = alcoholProductKindCode;
             position.tareVolume = tareVolume;
+        }
+
+        private void setTobaccoParams(String mark) {
+            position.mark = mark;
         }
 
         public Builder setUuid(String uuid) {
@@ -893,8 +957,18 @@ public class Position implements Parcelable {
             return this;
         }
 
-        public Builder setPaymentFeature(@NonNull PaymentFeature paymentFeature) {
-            position.paymentFeature = paymentFeature;
+        public Builder setSettlementMethod(@NonNull SettlementMethod settlementMethod) {
+            position.settlementMethod = settlementMethod;
+            return this;
+        }
+
+        public Builder setAgentRequisites(@Nullable AgentRequisites agentRequisites) {
+            position.agentRequisites = agentRequisites;
+            return this;
+        }
+
+        public Builder setProductCode(@Nullable String productCode) {
+            position.productCode = productCode;
             return this;
         }
 
