@@ -66,7 +66,12 @@ public class IntegrationManagerImpl implements IntegrationManager {
         return call(action,
                 componentName,
                 data == null ? null : data.toBundle(),
-                null,
+                new ICanStartActivity() {
+                    @Override
+                    public void startActivity(Intent intent) {
+                        context.startActivity(intent);
+                    }
+                },
                 callback,
                 handler
         );
