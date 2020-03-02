@@ -6,12 +6,12 @@ apply plugin: 'maven-publish'
 apply plugin: 'org.jetbrains.dokka-android'
 
 android {
-    def version = 7
+    def version = 10
 
     compileSdkVersion 28
     buildToolsVersion '28.0.3'
     defaultConfig {
-        minSdkVersion 22
+        minSdkVersion 23
         targetSdkVersion 28
         versionCode version
         versionName "0.4.5"
@@ -76,18 +76,6 @@ dokka {
 
     includes = ['packages.md']
 
-//    reportUndocumented = true
-
-//    packageOptions {
-//        prefix = "android.support" // will match kotlin.internal and all sub-packages of it
-//        suppress = true
-//    }
-
-//    packageOptions {
-//        prefix = "ru.evotor.pushNotifications" // will match kotlin.internal and all sub-packages of it
-//        suppress = true
-//    }
-
 }
 
 task dokkaJavadoc(type: org.jetbrains.dokka.gradle.DokkaTask) {
@@ -128,7 +116,7 @@ publishing {
         mavenKotlin(MavenPublication) {
             groupId 'com.github.evotor'
             artifactId "integration-library"
-            version "STDEV-1735"
+            version "STDEV-1901"
             artifact(sourceJar)
             artifact(javadocJar)
             artifact "${project.buildDir}/outputs/aar/${project.archivesBaseName}-release.aar"

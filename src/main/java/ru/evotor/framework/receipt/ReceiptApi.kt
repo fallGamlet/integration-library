@@ -17,10 +17,10 @@ import ru.evotor.framework.receipt.ReceiptDiscountTable.DISCOUNT_COLUMN_NAME
 import ru.evotor.framework.receipt.ReceiptDiscountTable.POSITION_DISCOUNT_UUID_COLUMN_NAME
 import ru.evotor.framework.receipt.mapper.FiscalReceiptMapper
 import ru.evotor.framework.receipt.position.mapper.AgentRequisitesMapper
-import ru.evotor.framework.receipt.position.SettlementMethod
 import ru.evotor.framework.receipt.position.mapper.SettlementMethodMapper
 import ru.evotor.framework.receipt.provider.FiscalReceiptContract
 import ru.evotor.framework.safeValueOf
+import java.lang.Exception
 import java.math.BigDecimal
 import java.util.*
 import kotlin.collections.ArrayList
@@ -285,6 +285,16 @@ object ReceiptApi {
     }
 
     private fun createPrintGroup(cursor: Cursor): PrintGroup? {
+        val subjectId = cursor.optString(PrintGroupSubTable.COLUMN_SUBJECT_ID)
+        val purchaserName = cursor.optString(PrintGroupSubTable.COLUMN_PURCHASER_NAME)
+        val purchaserDocumentNumber = cursor.optString(PrintGroupSubTable.COLUMN_PURCHASER_DOCUMENT_NUMBER)
+        val purchaserType = cursor.optLong(PrintGroupSubTable.COLUMN_PURCHASER_TYPE)?.let {
+            if (it < 0) {
+                null
+            } else {
+                PurchaserType.values()[it.toInt() % PurchaserType.values().size]
+            }
+        }
         return PrintGroup(
                 cursor.getString(cursor.getColumnIndex(PrintGroupSubTable.COLUMN_IDENTIFIER))
                         ?: return null,
@@ -293,7 +303,17 @@ object ReceiptApi {
                 cursor.getString(cursor.getColumnIndex(PrintGroupSubTable.COLUMN_ORG_INN)),
                 cursor.getString(cursor.getColumnIndex(PrintGroupSubTable.COLUMN_ORG_ADDRESS)),
                 safeValueOf<TaxationSystem>(cursor.getString(cursor.getColumnIndex(PrintGroupSubTable.COLUMN_TAXATION_SYSTEM))),
-                cursor.getInt(cursor.getColumnIndex(PrintGroupSubTable.COLUMN_SHOULD_PRINT_RECEIPT)) == 1
+                cursor.getInt(cursor.getColumnIndex(PrintGroupSubTable.COLUMN_SHOULD_PRINT_RECEIPT)) == 1,
+                if (purchaserName != null && purchaserDocumentNumber != null) {
+                    Purchaser(purchaserName, purchaserDocumentNumber, purchaserType)
+                } else {
+                    null
+                },
+                if (subjectId != null){
+                    MedicineAttribute(subjectId)
+                } else {
+                    null
+                }
         )
     }
 
@@ -315,7 +335,7 @@ object ReceiptApi {
                         cursor.getString(cursor.getColumnIndex(PositionTable.COLUMN_POSITION_UUID)),
                         cursor.getString(cursor.getColumnIndex(PositionTable.COLUMN_PRODUCT_UUID)),
                         cursor.getString(cursor.getColumnIndex(PositionTable.COLUMN_PRODUCT_CODE)),
-                        ProductType.valueOf(cursor.getString(cursor.getColumnIndex(PositionTable.COLUMN_PRODUCT_TYPE))),
+                        safeValueOf<ProductType>(cursor.getString(cursor.getColumnIndex(PositionTable.COLUMN_PRODUCT_TYPE)),ProductType.NORMAL),
                         cursor.getString(cursor.getColumnIndex(PositionTable.COLUMN_NAME)),
                         cursor.getString(cursor.getColumnIndex(PositionTable.COLUMN_MEASURE_NAME)),
                         cursor.getInt(cursor.getColumnIndex(PositionTable.COLUMN_MEASURE_PRECISION)),
