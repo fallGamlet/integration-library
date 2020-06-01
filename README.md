@@ -16,7 +16,15 @@ allprojects {
 
 ```
 dependencies {
-compile 'com.github.evotor:integration-library:v0.3.+'
+    implementation 'com.github.evotor:integration-library:v0.4.+'
+}
+```
+
+и укажите minSdkVersion проекта:
+```
+defaultConfig {
+        minSdkVersion 22
+	...
 }
 ```
 
